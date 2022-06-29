@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import People from "./components/People";
 import PersonForm from "./components/PersonForm";
 import Filter from "./components/Filter";
+import personsService from "./services/personsService";
+
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: "Arto Hellas", number: "040-123456", id: 1 },
-    { name: "Ada Lovelace", number: "39-44-5323523", id: 2 },
-    { name: "Dan Abramov", number: "12-43-234345", id: 3 },
-    { name: "Mary Poppendieck", number: "39-23-6423122", id: 4 },
-  ]);
+  const [persons, setPersons] = useState([]);
 
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newFilteredList, setNewFilterList] = useState("");
   const [newFilterInput, setNewFilterInput] = useState("");
+
+  const hook = () => {
+    personsService.getAll().then((persons) => {
+      setPersons(persons);
+    });
+  };
+  useEffect(hook, [persons]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -21,38 +25,60 @@ const App = () => {
       name: newName,
       number: newNumber,
     };
+    let duplicatePerson = null;
+    let duplicateID = null;
 
     persons.some((person) => {
-      if (person.name === newName || person.number === newNumber) {
-        return alert(`${newName} is already in the list`);
-      }
+      if (person.name === newName || person.number===newNumber) {
+        if(window.confirm(`${person.name} is already in the list. Replace?`)){
+          duplicatePerson = person;
+          duplicateID = person.id
+          return (alert(`${person.name} was updated`));
+        }
+      } 
     });
-
-    setPersons(persons.concat(newPersonObject));
-    setNewName("");
-    setNewNumber("");
+    if(duplicatePerson===null){
+      personsService.create(newPersonObject).then((person) => {
+        console.log(person);
+        setPersons(persons.concat(person));
+      });
+    }else{
+      personsService.update(duplicateID,{...duplicatePerson,number:newNumber}).then((person) => {
+        console.log(person);
+        setPersons(persons.concat(person));
+      });
+    }
   };
 
   const inputHandlerName = (event) => {
     event.preventDefault();
-    console.log(event.target.value);
     setNewName(event.target.value);
   };
 
   const inputHandlerNumber = (event) => {
     event.preventDefault();
-    console.log(event.target.value);
     setNewNumber(event.target.value);
   };
 
   const filterHandler = (event) => {
     event.preventDefault();
     let filteredPersons = persons.filter((person) => {
-      return person.name.toLowerCase().includes(event.target.value.toLowerCase());
-    })
-    setNewFilterList(filteredPersons)
-    setNewFilterInput(event.target.value)
-    // console.log(filteredPersons)
+      return person.name
+        .toLowerCase()
+        .includes(event.target.value.toLowerCase());
+    });
+    setNewFilterList(filteredPersons);
+    setNewFilterInput(event.target.value);
+  };
+
+  const deleteHandler = (event) => {
+    if(window.confirm('Are you sure?')){
+      personsService
+      .del(event.target.id)
+      .then((response) => {
+        setPersons(response)
+      });
+    }
   };
 
   return (
@@ -68,7 +94,10 @@ const App = () => {
         onSubmit={handleSubmit}
       />
       <h3>Numbers</h3>
-      <People persons={newFilterInput===""?persons:newFilteredList} />
+      <People
+        persons={newFilterInput === "" ? persons : newFilteredList}
+        deleteHandler={deleteHandler}
+      />
     </div>
   );
 };

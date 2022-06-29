@@ -1,13 +1,14 @@
 import React from "react";
 
-const People = ({ persons }) => {
-  console.log(typeof persons)
+const People = ({ persons,deleteHandler }) => {
   return (
     <div>
       <ul>
         {persons.map((person) => {
           return(
-            <li>{person.name} {person.number}</li>
+          <>
+            <li key={person.id}>{person.name} {person.number}<button onClick={deleteHandler} id={person.id}>Delete</button></li>
+          </>
           )
         })}
       </ul>
