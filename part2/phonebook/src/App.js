@@ -3,6 +3,8 @@ import People from "./components/People";
 import PersonForm from "./components/PersonForm";
 import Filter from "./components/Filter";
 import personsService from "./services/personsService";
+import useDeepCompareEffect from 'use-deep-compare-effect'
+import Notification from './components/Notification'
 
 const App = () => {
   const [persons, setPersons] = useState([]);
@@ -11,13 +13,14 @@ const App = () => {
   const [newNumber, setNewNumber] = useState("");
   const [newFilteredList, setNewFilterList] = useState("");
   const [newFilterInput, setNewFilterInput] = useState("");
+  const [notificationMessage,setNotificationMessage] = useState(null)
 
   const hook = () => {
-    personsService.getAll().then((persons) => {
+    personsService.getAll().then(persons => {
       setPersons(persons);
     });
   };
-  useEffect(hook, [persons]);
+  useDeepCompareEffect(hook, [persons]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -33,20 +36,22 @@ const App = () => {
         if(window.confirm(`${person.name} is already in the list. Replace?`)){
           duplicatePerson = person;
           duplicateID = person.id
-          return (alert(`${person.name} was updated`));
+          return ;
         }
       } 
     });
     if(duplicatePerson===null){
       personsService.create(newPersonObject).then((person) => {
         console.log(person);
-        setPersons(persons.concat(person));
+        setPersons(persons.concat(person))
+        .then(createNotificationMessage('User Created'))
       });
     }else{
       personsService.update(duplicateID,{...duplicatePerson,number:newNumber}).then((person) => {
         console.log(person);
         setPersons(persons.concat(person));
-      });
+      })
+      .then(createNotificationMessage('Updated User!'));
     }
   };
 
@@ -76,14 +81,29 @@ const App = () => {
       personsService
       .del(event.target.id)
       .then((response) => {
-        setPersons(response)
-      });
+        let delete_url = response
+        let parts = delete_url.split('/')
+        let deleted_id = parts[parts.length-1]
+        setPersons(persons.filter(person=>{person.id=!deleted_id}))
+        console.log(parts)
+      })
+      .then(()=>{
+        createNotificationMessage('Deleted User')
+      })
     }
   };
 
+  const createNotificationMessage = (message) =>{
+    setNotificationMessage(message)
+    setTimeout(()=>setNotificationMessage(null),5000)
+  }
+
+  // IN general, things in this part of the app are all dynamically set by functions above
+  // or by states that are changed by functions above
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={notificationMessage}></Notification>
       <Filter filterHandler={filterHandler} newFilterInput={newFilterInput} />
       <h3>Add a new contact</h3>
       <PersonForm
